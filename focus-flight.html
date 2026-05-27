@@ -1,0 +1,1390 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Focus Flight | 專注航班</title>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Share+Tech+Mono&display=swap");
+
+    :root {
+      --bg: #090d12;
+      --panel: #111821;
+      --panel-2: #182231;
+      --ink: #f3f7fb;
+      --muted: #8ea0b6;
+      --line: rgba(255,255,255,.12);
+      --gold: #d8aa54;
+      --amber: #f4c768;
+      --cyan: #63d9ff;
+      --green: #54d88c;
+      --red: #ff6b6b;
+      --shadow: 0 24px 70px rgba(0,0,0,.45);
+      color-scheme: dark;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(99, 217, 255, .08), transparent 26rem),
+        linear-gradient(145deg, #070a0f 0%, #0d131c 45%, #05070a 100%);
+      color: var(--ink);
+      font-family: "Noto Sans TC", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      overflow-x: hidden;
+    }
+
+    button,
+    select {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+      color: var(--ink);
+    }
+
+    .app {
+      min-height: 100vh;
+      position: relative;
+      isolation: isolate;
+    }
+
+    .app::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+      background-size: 44px 44px;
+      mask-image: linear-gradient(to bottom, rgba(0,0,0,.85), transparent);
+      z-index: -2;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .screen {
+      min-height: 100vh;
+      padding: clamp(20px, 4vw, 48px);
+      display: grid;
+      place-items: center;
+    }
+
+    .lounge-shell {
+      width: min(1120px, 100%);
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 24px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      min-height: 48px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 900;
+      letter-spacing: 0;
+    }
+
+    .brand-mark {
+      width: 42px;
+      height: 42px;
+      border: 1px solid rgba(216,170,84,.5);
+      display: grid;
+      place-items: center;
+      color: var(--gold);
+      background: linear-gradient(145deg, rgba(216,170,84,.18), rgba(99,217,255,.07));
+      border-radius: 8px;
+      box-shadow: 0 12px 30px rgba(216,170,84,.12);
+    }
+
+    .mode-control {
+      border: 1px solid var(--line);
+      color: var(--muted);
+      padding: 8px;
+      border-radius: 8px;
+      background: rgba(255,255,255,.04);
+      font-size: 13px;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .mode-control select {
+      min-height: 34px;
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 6px;
+      background: #0e151e;
+      color: var(--ink);
+      padding: 0 10px;
+      outline: none;
+    }
+
+    .board {
+      background: linear-gradient(180deg, rgba(24,34,49,.94), rgba(9,13,18,.96));
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .board-header {
+      display: grid;
+      grid-template-columns: .9fr 1.45fr .8fr;
+      gap: 1px;
+      background: rgba(255,255,255,.08);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .board-header span {
+      background: rgba(8,12,17,.86);
+      color: var(--muted);
+      padding: 14px 18px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .board-row {
+      display: grid;
+      grid-template-columns: .9fr 1.45fr .8fr;
+      gap: 1px;
+      background: rgba(255,255,255,.08);
+    }
+
+    .board-cell {
+      min-height: 144px;
+      padding: clamp(16px, 3vw, 30px);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01)),
+        #0b1017;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .board-cell.split-active::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 50%;
+      height: 1px;
+      background: rgba(0,0,0,.65);
+      box-shadow: 0 -1px rgba(255,255,255,.06);
+      pointer-events: none;
+    }
+
+    .label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .split-text {
+      font-family: "Share Tech Mono", monospace;
+      font-size: clamp(30px, 5vw, 58px);
+      line-height: .98;
+      color: var(--amber);
+      text-transform: uppercase;
+      text-shadow: 0 0 22px rgba(244,199,104,.2);
+      word-break: break-word;
+    }
+
+    .split-text.small {
+      font-size: clamp(22px, 3vw, 34px);
+      color: var(--ink);
+    }
+
+    .destination-slot {
+      min-height: 72px;
+      display: grid;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .destination-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .flip-shake {
+      animation: flipShake .075s steps(2, end) infinite;
+    }
+
+    .selector-wrap {
+      display: grid;
+      gap: 10px;
+    }
+
+    .airport-select {
+      width: 100%;
+      min-height: 52px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: #0e151e;
+      color: var(--ink);
+      padding: 0 14px;
+      outline: none;
+    }
+
+    .airport-select:focus {
+      border-color: rgba(99,217,255,.75);
+      box-shadow: 0 0 0 3px rgba(99,217,255,.15);
+    }
+
+    .board-note {
+      padding: clamp(18px, 3vw, 28px);
+      background: rgba(255,255,255,.035);
+      border-top: 1px solid var(--line);
+    }
+
+    .hint {
+      color: var(--muted);
+      margin: 0;
+      line-height: 1.8;
+      font-size: 14px;
+    }
+
+    .primary-btn {
+      min-height: 64px;
+      padding: 0 28px;
+      border-radius: 8px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.18), transparent),
+        linear-gradient(135deg, #d8aa54, #916d2f);
+      color: #101015;
+      font-weight: 900;
+      box-shadow: 0 18px 40px rgba(216,170,84,.24);
+      transition: transform .2s ease, filter .2s ease;
+      white-space: nowrap;
+    }
+
+    .primary-btn:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.05);
+    }
+
+    .primary-btn:disabled {
+      cursor: wait;
+      opacity: .72;
+      transform: none;
+    }
+
+    .destination-slot .primary-btn {
+      width: 100%;
+      min-height: 72px;
+      white-space: normal;
+      font-size: clamp(17px, 2vw, 22px);
+    }
+
+    .manual-flight-select {
+      width: 100%;
+      min-height: 72px;
+      border: 0;
+      border-radius: 8px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.18), transparent),
+        linear-gradient(135deg, #d8aa54, #916d2f);
+      color: #101015;
+      outline: none;
+      font-weight: 900;
+      font-size: clamp(17px, 2vw, 22px);
+      text-align: center;
+      text-align-last: center;
+      box-shadow: 0 18px 40px rgba(216,170,84,.24);
+      cursor: pointer;
+      appearance: none;
+      padding: 0 18px;
+    }
+
+    .manual-flight-select:disabled {
+      cursor: wait;
+      opacity: .72;
+    }
+
+    .secondary-btn,
+    .danger-btn {
+      min-height: 48px;
+      padding: 0 18px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.07);
+      font-weight: 800;
+    }
+
+    .secondary-btn:hover {
+      background: rgba(99,217,255,.13);
+      border-color: rgba(99,217,255,.4);
+    }
+
+    .danger-btn {
+      color: #ffd8d8;
+      border-color: rgba(255,107,107,.45);
+      background: rgba(255,107,107,.12);
+    }
+
+    .danger-btn:hover {
+      background: rgba(255,107,107,.2);
+    }
+
+    .flight-meta {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      animation: fadeUp .35s ease both;
+    }
+
+    .meta-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      background: rgba(255,255,255,.04);
+    }
+
+    .meta-card b {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+
+    .meta-card span {
+      font-family: "Share Tech Mono", monospace;
+      color: var(--cyan);
+      font-size: 22px;
+    }
+
+    .cabin {
+      min-height: 100vh;
+      padding: clamp(20px, 5vw, 54px);
+      display: grid;
+      place-items: center;
+      background:
+        linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px),
+        linear-gradient(180deg, #07101a, #0a0d13 58%, #050608);
+      background-size: 72px 100%;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cabin::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 10% 45%, rgba(99,217,255,.14), transparent 17rem),
+        radial-gradient(ellipse at 90% 50%, rgba(216,170,84,.1), transparent 18rem);
+      pointer-events: none;
+    }
+
+    .timer-panel {
+      width: min(980px, 100%);
+      position: relative;
+      z-index: 1;
+      display: grid;
+      gap: 28px;
+      text-align: center;
+    }
+
+    .route-title {
+      color: var(--muted);
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .route-title strong {
+      color: var(--ink);
+    }
+
+    .timer {
+      font-family: "Share Tech Mono", monospace;
+      font-size: clamp(58px, 14vw, 176px);
+      line-height: .9;
+      color: var(--ink);
+      text-shadow: 0 0 34px rgba(99,217,255,.18);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .progress-zone {
+      display: grid;
+      gap: 14px;
+    }
+
+    .progress-line {
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.12);
+      position: relative;
+      overflow: visible;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--gold), var(--cyan));
+      box-shadow: 0 0 24px rgba(99,217,255,.28);
+      transition: width .35s linear;
+    }
+
+    .plane {
+      position: absolute;
+      top: 50%;
+      left: 0%;
+      width: 42px;
+      height: 42px;
+      transform: translate(-50%, -50%);
+      display: grid;
+      place-items: center;
+      color: var(--ink);
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 50%;
+      background: #111821;
+      box-shadow: 0 12px 26px rgba(0,0,0,.36);
+      transition: left .35s linear;
+    }
+
+    .progress-labels {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--muted);
+      font-family: "Share Tech Mono", monospace;
+      font-size: 15px;
+    }
+
+    .cabin-actions {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: grid;
+      place-items: center;
+      padding: 22px;
+      background: rgba(2,5,9,.74);
+      backdrop-filter: blur(12px);
+    }
+
+    .modal-stage {
+      width: min(780px, 100%);
+      display: grid;
+      gap: 18px;
+      justify-items: center;
+    }
+
+    .passport {
+      width: min(420px, 88vw);
+      aspect-ratio: 1.45 / 1;
+      border-radius: 14px;
+      background:
+        linear-gradient(135deg, rgba(255,255,255,.13), transparent 40%),
+        linear-gradient(145deg, #14345f, #071d39);
+      border: 1px solid rgba(255,255,255,.18);
+      box-shadow: 0 34px 90px rgba(0,0,0,.55);
+      position: relative;
+      transform-origin: center;
+      animation: passportIn .48s cubic-bezier(.2,.8,.2,1) both;
+      overflow: hidden;
+    }
+
+    .passport::before {
+      content: "";
+      position: absolute;
+      inset: 18px;
+      border: 1px solid rgba(216,170,84,.36);
+      border-radius: 10px;
+    }
+
+    .passport::after {
+      content: "PASSPORT";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 24px;
+      text-align: center;
+      font-family: "Share Tech Mono", monospace;
+      font-size: 34px;
+      color: rgba(216,170,84,.9);
+      letter-spacing: 0;
+    }
+
+    .passport-lines {
+      position: absolute;
+      left: 34px;
+      right: 34px;
+      top: 34px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .passport-lines span {
+      display: block;
+      height: 7px;
+      background: rgba(255,255,255,.1);
+      border-radius: 999px;
+    }
+
+    .stamp {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 218px;
+      height: 118px;
+      border: 5px solid var(--red);
+      color: var(--red);
+      display: grid;
+      place-items: center;
+      text-align: center;
+      border-radius: 10px;
+      font-family: "Share Tech Mono", monospace;
+      font-weight: 900;
+      font-size: 30px;
+      line-height: 1.05;
+      text-transform: uppercase;
+      transform: translate(-50%, -50%) rotate(-9deg) scale(2.5);
+      opacity: 0;
+      filter: drop-shadow(0 10px 20px rgba(0,0,0,.35));
+    }
+
+    .stamp.arrival {
+      border-color: var(--green);
+      color: var(--green);
+      transform: translate(-50%, -50%) rotate(7deg) scale(2.5);
+    }
+
+    .stamp.hit {
+      animation: stampHit .55s cubic-bezier(.18,.9,.18,1.2) .28s forwards;
+    }
+
+    .stamp small {
+      display: block;
+      font-family: "Noto Sans TC", sans-serif;
+      font-size: 17px;
+      margin-top: 4px;
+    }
+
+    .announcement {
+      width: min(680px, 100%);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(17,24,33,.94);
+      box-shadow: var(--shadow);
+      padding: clamp(18px, 4vw, 30px);
+      animation: fadeUp .35s ease both;
+    }
+
+    .announcement h2 {
+      margin: 0 0 12px;
+      font-size: clamp(24px, 4vw, 36px);
+    }
+
+    .announcement p {
+      margin: 0 0 22px;
+      color: #d9e2ee;
+      line-height: 1.9;
+      font-size: 16px;
+    }
+
+    .announcement-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .screen-flash {
+      animation: screenImpact .34s ease;
+    }
+
+    @keyframes flipShake {
+      0% { transform: translateY(-2px) skewX(-1deg); filter: brightness(1.18); }
+      50% { transform: translateY(2px) skewX(1deg); filter: brightness(.88); }
+      100% { transform: translateY(-1px) skewX(0); filter: brightness(1.08); }
+    }
+
+    @keyframes passportIn {
+      from { transform: translateY(18px) rotateX(18deg) scale(.92); opacity: 0; }
+      to { transform: translateY(0) rotateX(0) scale(1); opacity: 1; }
+    }
+
+    @keyframes stampHit {
+      0% { opacity: 0; transform: translate(-50%, -50%) rotate(-12deg) scale(2.6); }
+      58% { opacity: 1; transform: translate(-50%, -50%) rotate(-9deg) scale(.9); }
+      76% { transform: translate(-50%, -50%) rotate(-9deg) scale(1.05); }
+      100% { opacity: 1; transform: translate(-50%, -50%) rotate(-9deg) scale(1); }
+    }
+
+    .stamp.arrival.hit {
+      animation-name: stampArrivalHit;
+    }
+
+    @keyframes stampArrivalHit {
+      0% { opacity: 0; transform: translate(-50%, -50%) rotate(10deg) scale(2.6); }
+      58% { opacity: 1; transform: translate(-50%, -50%) rotate(7deg) scale(.9); }
+      76% { transform: translate(-50%, -50%) rotate(7deg) scale(1.05); }
+      100% { opacity: 1; transform: translate(-50%, -50%) rotate(7deg) scale(1); }
+    }
+
+    @keyframes fadeUp {
+      from { transform: translateY(12px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    @keyframes screenImpact {
+      0%, 100% { transform: translate(0,0); }
+      20% { transform: translate(8px,-3px); }
+      40% { transform: translate(-7px,4px); }
+      60% { transform: translate(5px,3px); }
+      80% { transform: translate(-3px,-2px); }
+    }
+
+    @media (max-width: 760px) {
+      .board-header {
+        display: none;
+      }
+
+      .board-row,
+      .destination-actions,
+      .flight-meta {
+        grid-template-columns: 1fr;
+      }
+
+      .board-cell {
+        min-height: 118px;
+      }
+
+      .primary-btn {
+        width: 100%;
+        white-space: normal;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .mode-control {
+        width: 100%;
+        justify-content: space-between;
+      }
+
+      .mode-control select {
+        flex: 1;
+      }
+
+      .timer {
+        font-size: clamp(54px, 18vw, 92px);
+      }
+
+      .progress-labels {
+        font-size: 13px;
+      }
+
+      .stamp {
+        width: 188px;
+        height: 104px;
+        font-size: 26px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: .001ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: .001ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app" id="app">
+    <section class="screen" id="setupScreen" aria-label="航班準備">
+      <div class="lounge-shell">
+        <header class="topbar">
+          <div class="brand">
+            <div class="brand-mark" aria-hidden="true">✈</div>
+            <div>
+              <div>Focus Flight</div>
+              <div class="label">International Study Lounge</div>
+            </div>
+          </div>
+          <div class="mode-control">
+            <label for="modeSelect">計時模式</label>
+            <select id="modeSelect">
+              <option value="test">測試：小時以秒運算</option>
+              <option value="production">正式：真實分鐘倒數</option>
+            </select>
+          </div>
+        </header>
+
+        <section class="board" aria-label="航班資訊看板">
+          <div class="board-header" aria-hidden="true">
+            <span>Departure</span>
+            <span>Destination</span>
+            <span>Flight Time</span>
+          </div>
+          <div class="board-row">
+            <div class="board-cell">
+              <div class="selector-wrap">
+                <label class="label" for="originSelect">出發機場</label>
+                <select class="airport-select" id="originSelect"></select>
+              </div>
+              <div class="split-text small" id="originCode">TPE</div>
+            </div>
+            <div class="board-cell" id="destinationCell">
+              <div class="label">目的地</div>
+              <div class="destination-slot">
+                <div class="destination-actions" id="destinationActions">
+                  <button class="primary-btn" id="findFlightBtn">尋找正式航班</button>
+                  <select class="manual-flight-select" id="manualDestinationSelect" aria-label="自己選入境機場"></select>
+                </div>
+                <div class="split-text hidden" id="destinationDisplay"></div>
+              </div>
+            </div>
+            <div class="board-cell" id="durationCell">
+              <div class="label">預計飛行時間</div>
+              <div class="split-text small" id="durationDisplay">--:--:--</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="flight-meta hidden" id="flightMeta" aria-label="航班狀態">
+          <div class="meta-card">
+            <b>BOARDING STATUS</b>
+            <span id="boardingStatus">READY</span>
+          </div>
+          <div class="meta-card">
+            <b>CALL SIGN</b>
+            <span id="callSign">FF-000</span>
+          </div>
+          <div class="meta-card">
+            <b>GATE</b>
+            <span id="gateNumber">A12</span>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section class="cabin hidden" id="flightScreen" aria-label="飛行專注計時">
+      <div class="timer-panel">
+        <div class="route-title" id="routeTitle"><strong>TPE</strong> ✈ <strong>FUK</strong></div>
+        <div class="timer" id="timerDisplay">00:00:00</div>
+        <div class="progress-zone">
+          <div class="progress-line" aria-label="航程進度">
+            <div class="progress-fill" id="progressFill"></div>
+            <div class="plane" id="planeIcon" aria-hidden="true">✈</div>
+          </div>
+          <div class="progress-labels">
+            <span id="progressOrigin">TPE</span>
+            <span id="progressPercent">0%</span>
+            <span id="progressDestination">FUK</span>
+          </div>
+        </div>
+        <div class="cabin-actions">
+          <button class="danger-btn" id="abortBtn">緊急迫降（放棄專注）</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="overlay hidden" id="passportOverlay" aria-live="polite" aria-modal="true" role="dialog">
+      <div class="modal-stage">
+        <div class="passport">
+          <div class="stamp" id="stampMark">DEPARTED<small>出境章</small></div>
+          <div class="passport-lines" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        </div>
+        <div class="announcement hidden" id="announcementBox">
+          <h2 id="announcementTitle">歡迎登機</h2>
+          <p id="announcementText"></p>
+          <div class="announcement-actions">
+            <button class="secondary-btn" id="modalActionBtn">進入客艙</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const DEBUG_MODE = true;
+    const EARTH_RADIUS_KM = 6371;
+    const CRUISE_SPEED_KMH = 820;
+    const AIRPORT_BUFFER_MINUTES = 45;
+
+    const airports = [
+      { iata: "TPE", city: "台北桃園", country: "台灣", minutesFromOrigin: 75 },
+      { iata: "HKG", city: "香港", country: "香港", minutesFromOrigin: 120 },
+      { iata: "HND", city: "東京羽田", country: "日本", minutesFromOrigin: 180 },
+      { iata: "NRT", city: "東京成田", country: "日本", minutesFromOrigin: 190 },
+      { iata: "KIX", city: "大阪關西", country: "日本", minutesFromOrigin: 165 },
+      { iata: "FUK", city: "福岡", country: "日本", minutesFromOrigin: 135 },
+      { iata: "ICN", city: "首爾仁川", country: "韓國", minutesFromOrigin: 150 },
+      { iata: "SIN", city: "新加坡樟宜", country: "新加坡", minutesFromOrigin: 285 },
+      { iata: "BKK", city: "曼谷蘇凡納布", country: "泰國", minutesFromOrigin: 235 },
+      { iata: "KUL", city: "吉隆坡", country: "馬來西亞", minutesFromOrigin: 290 },
+      { iata: "CGK", city: "雅加達", country: "印尼", minutesFromOrigin: 330 },
+      { iata: "DXB", city: "杜拜", country: "阿拉伯聯合大公國", minutesFromOrigin: 510 },
+      { iata: "DOH", city: "杜哈", country: "卡達", minutesFromOrigin: 560 },
+      { iata: "IST", city: "伊斯坦堡", country: "土耳其", minutesFromOrigin: 720 },
+      { iata: "LHR", city: "倫敦希斯洛", country: "英國", minutesFromOrigin: 840 },
+      { iata: "CDG", city: "巴黎夏爾·戴高樂", country: "法國", minutesFromOrigin: 830 },
+      { iata: "AMS", city: "阿姆斯特丹史基浦", country: "荷蘭", minutesFromOrigin: 820 },
+      { iata: "FRA", city: "法蘭克福", country: "德國", minutesFromOrigin: 790 },
+      { iata: "MAD", city: "馬德里巴拉哈斯", country: "西班牙", minutesFromOrigin: 930 },
+      { iata: "JFK", city: "紐約甘迺迪", country: "美國", minutesFromOrigin: 920 },
+      { iata: "LAX", city: "洛杉磯", country: "美國", minutesFromOrigin: 680 },
+      { iata: "SFO", city: "舊金山", country: "美國", minutesFromOrigin: 660 },
+      { iata: "ORD", city: "芝加哥歐海爾", country: "美國", minutesFromOrigin: 840 },
+      { iata: "ATL", city: "亞特蘭大", country: "美國", minutesFromOrigin: 910 },
+      { iata: "DFW", city: "達拉斯沃斯堡", country: "美國", minutesFromOrigin: 820 },
+      { iata: "YVR", city: "溫哥華", country: "加拿大", minutesFromOrigin: 610 },
+      { iata: "YYZ", city: "多倫多皮爾森", country: "加拿大", minutesFromOrigin: 900 },
+      { iata: "SYD", city: "雪梨", country: "澳洲", minutesFromOrigin: 540 },
+      { iata: "MEL", city: "墨爾本", country: "澳洲", minutesFromOrigin: 560 },
+      { iata: "GRU", city: "聖保羅瓜魯柳斯", country: "巴西", minutesFromOrigin: 1320 }
+    ];
+
+    const airportCoordinates = {
+      TPE: { lat: 25.0797, lon: 121.2342 },
+      HKG: { lat: 22.3080, lon: 113.9185 },
+      HND: { lat: 35.5494, lon: 139.7798 },
+      NRT: { lat: 35.7719, lon: 140.3929 },
+      KIX: { lat: 34.4347, lon: 135.2441 },
+      FUK: { lat: 33.5859, lon: 130.4507 },
+      ICN: { lat: 37.4602, lon: 126.4407 },
+      SIN: { lat: 1.3644, lon: 103.9915 },
+      BKK: { lat: 13.6900, lon: 100.7501 },
+      KUL: { lat: 2.7456, lon: 101.7072 },
+      CGK: { lat: -6.1275, lon: 106.6537 },
+      DXB: { lat: 25.2532, lon: 55.3657 },
+      DOH: { lat: 25.2731, lon: 51.6081 },
+      IST: { lat: 41.2753, lon: 28.7519 },
+      LHR: { lat: 51.4700, lon: -0.4543 },
+      CDG: { lat: 49.0097, lon: 2.5479 },
+      AMS: { lat: 52.3105, lon: 4.7683 },
+      FRA: { lat: 50.0379, lon: 8.5622 },
+      MAD: { lat: 40.4983, lon: -3.5676 },
+      JFK: { lat: 40.6413, lon: -73.7781 },
+      LAX: { lat: 33.9416, lon: -118.4085 },
+      SFO: { lat: 37.6213, lon: -122.3790 },
+      ORD: { lat: 41.9742, lon: -87.9073 },
+      ATL: { lat: 33.6407, lon: -84.4277 },
+      DFW: { lat: 32.8998, lon: -97.0403 },
+      YVR: { lat: 49.1967, lon: -123.1815 },
+      YYZ: { lat: 43.6777, lon: -79.6248 },
+      SYD: { lat: -33.9399, lon: 151.1753 },
+      MEL: { lat: -37.6690, lon: 144.8410 },
+      GRU: { lat: -23.4356, lon: -46.4731 }
+    };
+
+    const state = {
+      phase: "setup",
+      origin: airports[0],
+      destination: null,
+      totalSeconds: 0,
+      remainingSeconds: 0,
+      timerId: null,
+      lastTick: 0,
+      selectedCallSign: "",
+      selectedGate: "",
+      debugMode: DEBUG_MODE
+    };
+
+    const setupScreen = document.getElementById("setupScreen");
+    const flightScreen = document.getElementById("flightScreen");
+    const modeSelect = document.getElementById("modeSelect");
+    const originSelect = document.getElementById("originSelect");
+    const originCode = document.getElementById("originCode");
+    const destinationCell = document.getElementById("destinationCell");
+    const durationCell = document.getElementById("durationCell");
+    const destinationActions = document.getElementById("destinationActions");
+    const destinationDisplay = document.getElementById("destinationDisplay");
+    const durationDisplay = document.getElementById("durationDisplay");
+    const findFlightBtn = document.getElementById("findFlightBtn");
+    const manualDestinationSelect = document.getElementById("manualDestinationSelect");
+    const flightMeta = document.getElementById("flightMeta");
+    const boardingStatus = document.getElementById("boardingStatus");
+    const callSign = document.getElementById("callSign");
+    const gateNumber = document.getElementById("gateNumber");
+    const passportOverlay = document.getElementById("passportOverlay");
+    const stampMark = document.getElementById("stampMark");
+    const announcementBox = document.getElementById("announcementBox");
+    const announcementTitle = document.getElementById("announcementTitle");
+    const announcementText = document.getElementById("announcementText");
+    const modalActionBtn = document.getElementById("modalActionBtn");
+    const routeTitle = document.getElementById("routeTitle");
+    const timerDisplay = document.getElementById("timerDisplay");
+    const progressFill = document.getElementById("progressFill");
+    const planeIcon = document.getElementById("planeIcon");
+    const progressOrigin = document.getElementById("progressOrigin");
+    const progressDestination = document.getElementById("progressDestination");
+    const progressPercent = document.getElementById("progressPercent");
+    const abortBtn = document.getElementById("abortBtn");
+
+    function init() {
+      airports.forEach((airport) => {
+        const option = document.createElement("option");
+        option.value = airport.iata;
+        option.textContent = `${airport.iata} ${airport.city} - ${airport.country}`;
+        originSelect.appendChild(option);
+      });
+
+      modeSelect.value = state.debugMode ? "test" : "production";
+      originSelect.value = state.origin.iata;
+      populateManualDestinations();
+      bindEvents();
+      resetSetup();
+    }
+
+    function bindEvents() {
+      modeSelect.addEventListener("change", () => {
+        state.debugMode = modeSelect.value === "test";
+        updateManualDuration();
+        if (state.destination) {
+          durationDisplay.textContent = formatFlightDuration(calculateFlightMinutes(state.origin, state.destination));
+        }
+      });
+
+      originSelect.addEventListener("change", () => {
+        const nextOrigin = airports.find((airport) => airport.iata === originSelect.value);
+        state.origin = nextOrigin || airports[0];
+        originCode.textContent = state.origin.iata;
+        populateManualDestinations();
+        resetDestinationBoard();
+      });
+
+      findFlightBtn.addEventListener("click", () => startBoardingSequence());
+      manualDestinationSelect.addEventListener("change", () => {
+        const chosenAirport = airports.find((airport) => airport.iata === manualDestinationSelect.value);
+        if (chosenAirport && state.phase === "setup") {
+          durationDisplay.textContent = formatFlightDuration(calculateFlightMinutes(state.origin, chosenAirport));
+          startBoardingSequence(chosenAirport);
+        }
+      });
+      modalActionBtn.addEventListener("click", handleModalAction);
+      abortBtn.addEventListener("click", abortFlight);
+    }
+
+    function resetSetup() {
+      stopTimer();
+      state.phase = "setup";
+      state.destination = null;
+      state.totalSeconds = 0;
+      state.remainingSeconds = 0;
+      setupScreen.classList.remove("hidden");
+      flightScreen.classList.add("hidden");
+      passportOverlay.classList.add("hidden");
+      announcementBox.classList.add("hidden");
+      flightMeta.classList.add("hidden");
+      destinationCell.classList.remove("split-active");
+      durationCell.classList.remove("split-active");
+      findFlightBtn.disabled = false;
+      destinationActions.classList.remove("hidden");
+      state.selectedCallSign = "";
+      state.selectedGate = "";
+      boardingStatus.textContent = "";
+      callSign.textContent = "";
+      gateNumber.textContent = "";
+      resetDestinationBoard();
+      updateTimerDisplay(0);
+      updateProgress(0);
+    }
+
+    function resetDestinationBoard() {
+      destinationActions.classList.remove("hidden");
+      findFlightBtn.disabled = false;
+      manualDestinationSelect.disabled = false;
+      manualDestinationSelect.value = "";
+      destinationDisplay.textContent = "";
+      destinationDisplay.classList.add("hidden");
+      durationDisplay.textContent = "--:--:--";
+      destinationDisplay.classList.remove("flip-shake");
+      durationDisplay.classList.remove("flip-shake");
+      destinationCell.classList.remove("split-active");
+      durationCell.classList.remove("split-active");
+      updateManualDuration();
+    }
+
+    function startBoardingSequence(manualDestination) {
+      if (state.phase !== "setup") return;
+
+      const isManualFlight = isAirport(manualDestination);
+      const selectedDestination = isManualFlight ? manualDestination : pickDestination();
+      state.phase = "boarding";
+      findFlightBtn.disabled = true;
+      manualDestinationSelect.disabled = true;
+      destinationActions.classList.add("hidden");
+      destinationCell.classList.add("split-active");
+      durationCell.classList.add("split-active");
+      destinationDisplay.classList.remove("hidden");
+      destinationDisplay.textContent = "SEARCHING";
+      flightMeta.classList.add("hidden");
+      state.destination = selectedDestination;
+      state.selectedCallSign = makeCallSign();
+      state.selectedGate = randomGate();
+
+      if (isManualFlight) {
+        destinationDisplay.textContent = `${state.destination.city} ${state.destination.iata}`;
+        durationDisplay.textContent = formatFlightDuration(calculateFlightMinutes(state.origin, state.destination));
+        showFlightMetaThenStamp();
+        return;
+      }
+
+      runSplitFlap(state.destination, showFlightMetaThenStamp);
+    }
+
+    function showFlightMetaThenStamp() {
+        boardingStatus.textContent = "READY";
+        callSign.textContent = state.selectedCallSign;
+        gateNumber.textContent = state.selectedGate;
+        flightMeta.classList.remove("hidden");
+        window.setTimeout(() => showPassportStamp("departure"), 650);
+    }
+
+    function pickDestination() {
+      const candidates = airports.filter((airport) => airport.iata !== state.origin.iata);
+      return candidates[Math.floor(Math.random() * candidates.length)];
+    }
+
+    function isAirport(value) {
+      return Boolean(value && typeof value === "object" && value.iata && value.city);
+    }
+
+    function populateManualDestinations() {
+      manualDestinationSelect.innerHTML = "";
+      const candidates = airports.filter((airport) => airport.iata !== state.origin.iata);
+      const placeholder = document.createElement("option");
+      placeholder.value = "";
+      placeholder.textContent = "自己選入境機場";
+      placeholder.disabled = true;
+      placeholder.selected = true;
+      manualDestinationSelect.appendChild(placeholder);
+
+      candidates.forEach((airport) => {
+        const minutes = calculateFlightMinutes(state.origin, airport);
+        const option = document.createElement("option");
+        option.value = airport.iata;
+        option.textContent = `${airport.iata} ${airport.city} - ${formatClockDuration(minutes)}`;
+        manualDestinationSelect.appendChild(option);
+      });
+
+      updateManualDuration();
+    }
+
+    function updateManualDuration() {
+      const chosenAirport = airports.find((airport) => airport.iata === manualDestinationSelect.value);
+      if (!chosenAirport) {
+        return;
+      }
+
+      const minutes = calculateFlightMinutes(state.origin, chosenAirport);
+      durationDisplay.textContent = formatFlightDuration(minutes);
+    }
+
+    function runSplitFlap(finalAirport, done) {
+      let ticks = 0;
+      const maxTicks = 24;
+      destinationDisplay.classList.add("flip-shake");
+      durationDisplay.classList.add("flip-shake");
+
+      const interval = window.setInterval(() => {
+        const sample = airports[Math.floor(Math.random() * airports.length)];
+        destinationDisplay.textContent = `${sample.city} ${sample.iata}`;
+        durationDisplay.textContent = formatFlightDuration(calculateFlightMinutes(state.origin, sample));
+        ticks += 1;
+
+        if (ticks >= maxTicks) {
+          window.clearInterval(interval);
+          destinationDisplay.classList.remove("flip-shake");
+          durationDisplay.classList.remove("flip-shake");
+          destinationDisplay.textContent = `${finalAirport.city} ${finalAirport.iata}`;
+          durationDisplay.textContent = formatFlightDuration(calculateFlightMinutes(state.origin, finalAirport));
+          window.setTimeout(done, 280);
+        }
+      }, 70);
+    }
+
+    function showPassportStamp(type) {
+      const isArrival = type === "arrival";
+      passportOverlay.classList.remove("hidden");
+      announcementBox.classList.add("hidden");
+      stampMark.className = `stamp ${isArrival ? "arrival" : ""}`;
+      stampMark.innerHTML = isArrival ? "ARRIVED<small>入境章</small>" : "DEPARTED<small>出境章</small>";
+
+      window.setTimeout(() => {
+        stampMark.classList.add("hit");
+        document.body.classList.add("screen-flash");
+        vibrate();
+        playStampSound();
+      }, 120);
+
+      window.setTimeout(() => {
+        document.body.classList.remove("screen-flash");
+        showAnnouncement(type);
+      }, 980);
+    }
+
+    function showAnnouncement(type) {
+      const destination = state.destination;
+      const readableDuration = formatReadableDuration(calculateFlightMinutes(state.origin, destination));
+      announcementBox.classList.remove("hidden");
+
+      if (type === "arrival") {
+        announcementTitle.textContent = "安全降落";
+        announcementText.textContent = `感謝您搭乘本次航班，我們已順利降落 ${destination.city}。恭喜您完成本次專注修煉！祝您旅途愉快，期待與您再次翱翔。`;
+        modalActionBtn.textContent = "離開機場";
+        modalActionBtn.dataset.action = "leave";
+      } else {
+        announcementTitle.textContent = "歡迎登機";
+        announcementText.textContent = `歡迎登機！本班機即將前往 ${destination.city}。預計飛行時間為 ${readableDuration}。請繫好安全帶，展開您的專注旅程。`;
+        modalActionBtn.textContent = "進入客艙";
+        modalActionBtn.dataset.action = "enter";
+      }
+    }
+
+    function handleModalAction() {
+      if (modalActionBtn.dataset.action === "leave") {
+        resetSetup();
+        return;
+      }
+
+      passportOverlay.classList.add("hidden");
+      beginFlightTimer();
+    }
+
+    function beginFlightTimer() {
+      state.phase = "inFlight";
+      setupScreen.classList.add("hidden");
+      flightScreen.classList.remove("hidden");
+      boardingStatus.textContent = "IN-FLIGHT";
+
+      const flightMinutes = calculateFlightMinutes(state.origin, state.destination);
+      state.totalSeconds = state.debugMode ? debugSecondsFromMinutes(flightMinutes) : flightMinutes * 60;
+      state.remainingSeconds = state.totalSeconds;
+      state.lastTick = performance.now();
+
+      routeTitle.innerHTML = `<strong>${state.origin.city} ${state.origin.iata}</strong> ✈ <strong>${state.destination.city} ${state.destination.iata}</strong>`;
+      progressOrigin.textContent = state.origin.iata;
+      progressDestination.textContent = state.destination.iata;
+      updateTimerDisplay(state.remainingSeconds);
+      updateProgress(0);
+
+      state.timerId = window.setInterval(tickTimer, 200);
+    }
+
+    function tickTimer() {
+      const now = performance.now();
+      const elapsed = (now - state.lastTick) / 1000;
+      state.lastTick = now;
+      state.remainingSeconds = Math.max(0, state.remainingSeconds - elapsed);
+
+      updateTimerDisplay(Math.ceil(state.remainingSeconds));
+
+      const progress = state.totalSeconds === 0 ? 1 : 1 - (state.remainingSeconds / state.totalSeconds);
+      updateProgress(progress);
+
+      if (state.remainingSeconds <= 0) {
+        completeFlight();
+      }
+    }
+
+    function completeFlight() {
+      stopTimer();
+      state.phase = "arrival";
+      updateTimerDisplay(0);
+      updateProgress(1);
+      window.setTimeout(() => showPassportStamp("arrival"), 450);
+    }
+
+    function abortFlight() {
+      if (state.phase !== "inFlight") return;
+      resetSetup();
+    }
+
+    function stopTimer() {
+      if (state.timerId) {
+        window.clearInterval(state.timerId);
+        state.timerId = null;
+      }
+    }
+
+    function updateTimerDisplay(seconds) {
+      const safeSeconds = Math.max(0, Math.floor(seconds));
+      const hours = Math.floor(safeSeconds / 3600);
+      const minutes = Math.floor((safeSeconds % 3600) / 60);
+      const secs = safeSeconds % 60;
+      timerDisplay.textContent = `${pad(hours)}:${pad(minutes)}:${pad(secs)}`;
+    }
+
+    function updateProgress(progress) {
+      const clamped = Math.min(1, Math.max(0, progress));
+      const percent = Math.round(clamped * 100);
+      progressFill.style.width = `${percent}%`;
+      planeIcon.style.left = `${percent}%`;
+      progressPercent.textContent = `${percent}%`;
+    }
+
+    function pad(value) {
+      return String(value).padStart(2, "0");
+    }
+
+    function formatFlightDuration(minutes) {
+      return formatClockDuration(minutes);
+    }
+
+    function formatClockDuration(minutes) {
+      const hours = Math.floor(minutes / 60);
+      const mins = minutes % 60;
+      return `${pad(hours)}:${pad(mins)}:00`;
+    }
+
+    function formatSecondsAsClock(seconds) {
+      const safeSeconds = Math.max(0, Math.floor(seconds));
+      const hours = Math.floor(safeSeconds / 3600);
+      const minutes = Math.floor((safeSeconds % 3600) / 60);
+      const secs = safeSeconds % 60;
+      return `${pad(hours)}:${pad(minutes)}:${pad(secs)}`;
+    }
+
+    function formatReadableDuration(minutes) {
+      const hours = Math.floor(minutes / 60);
+      const mins = minutes % 60;
+      const normalText = hours > 0 && mins > 0
+        ? `${hours} 小時 ${mins} 分鐘`
+        : hours > 0
+          ? `${hours} 小時`
+          : `${mins} 分鐘`;
+      if (state.debugMode) return `${normalText}（測試模式將倒數 ${formatSecondsAsClock(debugSecondsFromMinutes(minutes))}）`;
+      return normalText;
+    }
+
+    function debugSecondsFromMinutes(minutes) {
+      return Math.max(1, Math.round(minutes / 60));
+    }
+
+    function calculateFlightMinutes(origin, destination) {
+      if (!origin || !destination) return 0;
+      if (origin.iata === destination.iata) return AIRPORT_BUFFER_MINUTES;
+
+      const originCoords = airportCoordinates[origin.iata];
+      const destinationCoords = airportCoordinates[destination.iata];
+      if (!originCoords || !destinationCoords) return destination.minutesFromOrigin;
+
+      const distanceKm = calculateDistanceKm(originCoords, destinationCoords);
+      return Math.max(45, Math.round((distanceKm / CRUISE_SPEED_KMH) * 60 + AIRPORT_BUFFER_MINUTES));
+    }
+
+    function calculateDistanceKm(a, b) {
+      const lat1 = degreesToRadians(a.lat);
+      const lat2 = degreesToRadians(b.lat);
+      const deltaLat = degreesToRadians(b.lat - a.lat);
+      const deltaLon = degreesToRadians(b.lon - a.lon);
+      const sinLat = Math.sin(deltaLat / 2);
+      const sinLon = Math.sin(deltaLon / 2);
+      const h = sinLat * sinLat + Math.cos(lat1) * Math.cos(lat2) * sinLon * sinLon;
+      return EARTH_RADIUS_KM * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+    }
+
+    function degreesToRadians(value) {
+      return value * Math.PI / 180;
+    }
+
+    function randomGate() {
+      const letters = ["A", "B", "C", "D", "E"];
+      const letter = letters[Math.floor(Math.random() * letters.length)];
+      const number = Math.floor(Math.random() * 28) + 1;
+      return `${letter}${pad(number)}`;
+    }
+
+    function makeCallSign() {
+      const number = Math.floor(Math.random() * 900) + 100;
+      return `FF-${number}`;
+    }
+
+    function vibrate() {
+      if ("vibrate" in navigator) {
+        navigator.vibrate([45, 35, 70]);
+      }
+    }
+
+    function playStampSound() {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+
+      try {
+        const audio = new AudioContext();
+        const now = audio.currentTime;
+        const oscillator = audio.createOscillator();
+        const gain = audio.createGain();
+        const thump = audio.createOscillator();
+        const thumpGain = audio.createGain();
+
+        oscillator.type = "square";
+        oscillator.frequency.setValueAtTime(140, now);
+        oscillator.frequency.exponentialRampToValueAtTime(58, now + .12);
+        gain.gain.setValueAtTime(.0001, now);
+        gain.gain.exponentialRampToValueAtTime(.18, now + .015);
+        gain.gain.exponentialRampToValueAtTime(.0001, now + .16);
+
+        thump.type = "sine";
+        thump.frequency.setValueAtTime(70, now);
+        thump.frequency.exponentialRampToValueAtTime(36, now + .18);
+        thumpGain.gain.setValueAtTime(.0001, now);
+        thumpGain.gain.exponentialRampToValueAtTime(.28, now + .02);
+        thumpGain.gain.exponentialRampToValueAtTime(.0001, now + .2);
+
+        oscillator.connect(gain).connect(audio.destination);
+        thump.connect(thumpGain).connect(audio.destination);
+        oscillator.start(now);
+        thump.start(now);
+        oscillator.stop(now + .18);
+        thump.stop(now + .22);
+
+        window.setTimeout(() => audio.close(), 420);
+      } catch (error) {
+        console.warn("Stamp sound unavailable:", error);
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
