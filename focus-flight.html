@@ -1230,7 +1230,9 @@
 
     function populateManualDestinations() {
       manualDestinationSelect.innerHTML = "";
-      const candidates = airports.filter((airport) => airport.iata !== state.origin.iata);
+      const candidates = airports
+        .filter((airport) => airport.iata !== state.origin.iata)
+        .sort((a, b) => calculateFlightMinutes(state.origin, a) - calculateFlightMinutes(state.origin, b));
       const placeholder = document.createElement("option");
       placeholder.value = "";
       placeholder.textContent = "自己選入境機場";
